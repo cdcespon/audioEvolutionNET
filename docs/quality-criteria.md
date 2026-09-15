@@ -18,6 +18,10 @@ afirmación. Nada de "excelencia" sin evidencia.
       disco). No se hizo inspección visual con captura de pantalla (permiso de pantalla
       denegado en la sesión) — verificación funcional/de archivos, no visual. Ver
       README.md sección "Verificación en Windows real" y bugs #6/#7.
+- [x] `AudioEvolution.Audio.Windows`/`AudioEvolution.Audio.Windows.Tests` compilan y
+      corren en Windows real (`dotnet build`, 0 errores, 0 warnings; `dotnet test`, 7/7).
+      Incluye un test de hardware real (reproduce un tono y lo verifica con WASAPI loopback
+      capture, no un mock) — ver README.md sección "Backend de audio WASAPI".
 
 ## 2. Cobertura de casos DSP/motor de audio
 
@@ -63,7 +67,9 @@ Marcar solo lo que tiene implementación real y testeada — no "diseñado" ni "
 - [ ] Time-stretching / pitch-shifting
 - [ ] Exportación mezclada (mixdown a WAV como mínimo)
 - [ ] Codecs comprimidos (MP3/FLAC/OGG) de entrada y salida
-- [ ] Backend de audio real (WASAPI, luego ASIO) con latencia medida
+- [ ] Backend de audio real (WASAPI, luego ASIO) con latencia medida — WASAPI implementado
+      y verificado con hardware real (`AudioEvolution.Audio.Windows`), pero sin latencia
+      medida todavía y sin ASIO; no se marca completo hasta cerrar ambos.
 
 ## 5. Honestidad del reporte
 

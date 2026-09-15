@@ -7,10 +7,12 @@ multi-sesión — ver "Estado actual" antes de asumir cobertura de funcionalidad
 
 ```
 AudioEvolution.sln
-├── src/AudioEvolution.Core   → motor de audio, modelo de dominio, códecs (net8.0, multiplataforma)
-├── src/AudioEvolution.Data   → persistencia SQLite vía EF Core (net8.0, multiplataforma)
-├── src/AudioEvolution.App    → UI MAUI, head Windows/WinUI3 (net8.0-windows10.0.19041.0)
-└── tests/AudioEvolution.Core.Tests → xUnit, motor + persistencia
+├── src/AudioEvolution.Core          → motor de audio, modelo de dominio, códecs (net8.0, multiplataforma)
+├── src/AudioEvolution.Data          → persistencia SQLite vía EF Core (net8.0, multiplataforma)
+├── src/AudioEvolution.Audio.Windows → backend de audio real, WASAPI vía NAudio (net8.0-windows10.0.19041.0)
+├── src/AudioEvolution.App           → UI MAUI, head Windows/WinUI3 (net10.0-windows10.0.19041.0)
+├── tests/AudioEvolution.Core.Tests          → xUnit, motor + persistencia
+└── tests/AudioEvolution.Audio.Windows.Tests → xUnit, backend WASAPI (Windows real, hardware incluido)
 ```
 
 - **AudioEvolution.Core** no depende de MAUI, EF Core ni de ningún backend de audio real —
@@ -23,6 +25,14 @@ AudioEvolution.sln
   guardan como JSON dentro de la fila del proyecto (no normalizado en tablas relacionales
   todavía — no hace falta hasta que se necesite consultar across-project, p.ej. "todos los
   clips que referencian el archivo X").
+- **AudioEvolution.Audio.Windows** implementa `IAudioDevice`/`IAudioDeviceEnumerator` con
+  WASAPI real vía NAudio (`WasapiOut` en modo compartido, `MMDeviceEnumerator` para listar
+  dispositivos). **Verificado con hardware real**, no solo compilado: hay un test que
+  reproduce un tono de 440 Hz real por el dispositivo de salida por defecto y lo confirma
+  de forma independiente capturándolo con WASAPI loopback (graba lo que efectivamente llega
+  al mix del sistema operativo, aguas abajo de nuestro código) — ver sección "Verificación
+  en Windows real". ASIO todavía no está implementado (`AudioBackendKind.Asio` existe en el
+  modelo pero no tiene backend).
 - **AudioEvolution.App** es el head MAUI Windows. Por ahora: lista de proyectos + crear
   proyecto nuevo, conectado de verdad a `ProjectRepository`. El editor multipista todavía no
   existe (Task pendiente). **Compilado y verificado en Windows real** (ver sección
@@ -46,13 +56,15 @@ funciona hoy, con tests pasando:
   round-trip que específicamente cubre valores no-cero (crítico: un bug real encontrado
   y corregido durante el desarrollo hacía que toda posición no-cero se reseteara a 0 al
   recargar — ver sección siguiente).
+- Backend de audio real WASAPI (`AudioEvolution.Audio.Windows`): reproducción por el
+  dispositivo de salida por defecto, verificada con hardware real (no solo compilada) —
+  ver "Verificación en Windows real". ASIO todavía no.
 
 Lo que falta, sin eufemismos:
 
-- **Backend de audio real (WASAPI/ASIO)**: solo están las interfaces (`IAudioDevice`). No
-  hay sonido real todavía. Esto requiere un proyecto adicional `AudioEvolution.Audio.Windows`
-  con NAudio, que solo puede compilarse y probarse en Windows.
-- **UI del editor multipista**: timeline, waveforms, transporte. No existe.
+- **ASIO**: sólo WASAPI está implementado.
+- **UI del editor multipista**: timeline, waveforms, transporte, ni conexión entre
+  `MixEngine`/`AudioEvolution.Audio.Windows` y la UI. No existe.
 - **MIDI**, piano roll, instrumentos virtuales: no existe.
 - **Efectos** (EQ, compresor, reverb, etc.): solo el modelo de slot (`EffectInstance`), sin
   ningún DSP implementado.
@@ -150,6 +162,28 @@ el flujo completo: la app abre, lista proyectos (vacío al inicio), crea un proy
 desde la UI, y persiste de verdad — confirmado con el archivo `audioevolution.db` real en
 `%LOCALAPPDATA%\Audio Evolution\com.audioevolution.app\Data\`, con cabecera SQLite válida.
 
+### Backend de audio WASAPI
+
+`AudioEvolution.Audio.Windows` se armó y se verificó en la misma sesión que arregló
+`AudioEvolution.App`. Puntos concretos, no "debería andar":
+
+- `WasapiDeviceEnumerator.ListOutputDevices()` enumera los dispositivos reales de la
+  máquina vía `MMDeviceEnumerator` — cubierto por test que corre contra el hardware real
+  (no un mock).
+- `WasapiAudioDevice` adapta el modelo pull-callback de `IAudioDevice`
+  (`Start(AudioCallback)`, frame-oriented) al modelo de `NAudio.Wave.ISampleProvider`
+  (`Read(float[], offset, count)`, sample-oriented) vía `CallbackSampleProvider` — la
+  conversión de conteos (frames↔samples, avance de posición, offset no-cero en el buffer
+  destino, truncamiento a frames completos) tiene 5 tests unitarios puros, sin hardware.
+- La pieza que sí necesita hardware real se probó con hardware real: un test abre el
+  dispositivo de salida por defecto, reproduce un tono senoidal de 440 Hz real durante
+  500ms a través de `WasapiOut`, y en paralelo graba con `WasapiLoopbackCapture` — que
+  captura lo que el sistema operativo efectivamente está mezclando, corriente abajo de
+  nuestro código — y verifica que la energía RMS capturada sea significativamente mayor
+  a cero. El test guarda y restaura el volumen/mute maestro del dispositivo (necesario
+  porque loopback captura post-mezclador, así que refleja el estado real del volumen) —
+  deja un tono breve y bajo audible en la máquina mientras corre.
+
 Nota sobre la versión de MAUI: el proyecto apuntaba a `net8.0-windows` +
 `Microsoft.Maui.Controls 8.0.100`. Se subió a `net10.0-windows` + `Microsoft.Maui.Controls
 10.0.1` (alineado con el workload `maui-windows` instalado, banda 10.0.100) porque es la
@@ -163,9 +197,11 @@ en Linux); sólo el head Windows-only subió de banda.
 
 ## Cómo continuar
 
-1. Crear `AudioEvolution.Audio.Windows` implementando `IAudioDevice` con NAudio (WASAPI
-   primero, ASIO después) — es el bloqueador real para tener sonido.
-2. Construir el editor multipista en `AudioEvolution.App` sobre `MixEngine`.
+1. Construir el editor multipista en `AudioEvolution.App`: timeline, waveforms, transporte,
+   conectando `MixEngine` (ya existe) con `AudioEvolution.Audio.Windows` (ya existe) — hoy
+   ninguno de los dos está enchufado a la UI.
+2. ASIO en `AudioEvolution.Audio.Windows` (menor latencia que WASAPI) — no bloqueante,
+   WASAPI ya da sonido real.
 
 ## Criterios del "agente juez" (auditoría de calidad)
 

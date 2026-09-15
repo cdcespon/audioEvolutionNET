@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Windows-only en serio: WASAPI es Core Audio de Windows (NAudio.CoreAudioApi envuelve
+      COM real). No se puede restaurar/compilar en un contenedor Linux sin Windows — a
+      diferencia de AudioEvolution.Core/Data, este proyecto no pretende ser multiplataforma.
+    -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AudioEvolution.Audio.Windows.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AudioEvolution.Core\AudioEvolution.Core.csproj" />
+  </ItemGroup>
+
+</Project>
