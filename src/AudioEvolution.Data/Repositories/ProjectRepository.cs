@@ -14,14 +14,29 @@ public sealed class ProjectRepository
     };
 
     private readonly ProjectDbContext _db;
+    private bool _databaseEnsured;
 
     public ProjectRepository(ProjectDbContext db)
     {
         _db = db;
     }
 
+    private async Task EnsureDatabaseCreatedAsync(CancellationToken ct)
+    {
+        // Se hace acá (perezoso, en el primer uso real) en lugar de en MauiProgram al
+        // arrancar la app: EF Core/SQLite hacen P/Invoke nativo real, y llamarlo en
+        // sincrono durante MauiProgram.CreateMauiApp() — que corre como parte de la
+        // secuencia de arranque nativa de WinUI3 (Application.Start) — crashea el proceso
+        // (0xc000027b dentro de Microsoft.UI.Xaml.dll, sin excepcion .NET) en vez de
+        // lanzar una excepcion manejable. Ver README.md.
+        if (_databaseEnsured) return;
+        await _db.Database.EnsureCreatedAsync(ct);
+        _databaseEnsured = true;
+    }
+
     public async Task SaveAsync(Project project, CancellationToken ct = default)
     {
+        await EnsureDatabaseCreatedAsync(ct);
         project.ModifiedAt = DateTimeOffset.UtcNow;
 
         var entity = await _db.Projects.FindAsync(new object[] { project.Id }, ct);
@@ -54,6 +69,7 @@ public sealed class ProjectRepository
 
     public async Task<Project?> LoadAsync(Guid id, CancellationToken ct = default)
     {
+        await EnsureDatabaseCreatedAsync(ct);
         var entity = await _db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct);
         if (entity is null) return null;
 
@@ -78,6 +94,7 @@ public sealed class ProjectRepository
 
     public async Task<List<(Guid Id, string Name, DateTimeOffset ModifiedAt)>> ListAsync(CancellationToken ct = default)
     {
+        await EnsureDatabaseCreatedAsync(ct);
         // SQLite has no native DateTimeOffset comparison, so EF Core can't translate an
         // ORDER BY on it into SQL — sort client-side on the (small, per-project) result set instead.
         var rows = await _db.Projects
@@ -89,6 +106,7 @@ public sealed class ProjectRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
+        await EnsureDatabaseCreatedAsync(ct);
         var entity = await _db.Projects.FindAsync(new object[] { id }, ct);
         if (entity is not null)
         {

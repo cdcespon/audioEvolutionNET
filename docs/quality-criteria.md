@@ -11,9 +11,13 @@ afirmación. Nada de "excelencia" sin evidencia.
 - [ ] `dotnet test` en verde. Ningún test se comenta, se skippea o se debilita para que
       pase — si un test falla, se corrige el código o se corrige el test porque estaba mal
       planteado (con justificación explícita de por qué).
-- [ ] `AudioEvolution.App` compila en Windows con el workload MAUI (verificación que debe
-      hacerse en Windows real o CI con runner Windows — un juez que "aprueba" sin esto
-      miente).
+- [x] `AudioEvolution.App` compila en Windows con el workload MAUI — verificado en Windows
+      real (`dotnet build AudioEvolution.sln`, 0 errores, 0 warnings nuevos). Además se
+      ejecutó la app real: abre ventana, el flujo crear/listar proyecto corre, y persiste
+      de verdad en SQLite (archivo `audioevolution.db` con cabecera válida confirmado en
+      disco). No se hizo inspección visual con captura de pantalla (permiso de pantalla
+      denegado en la sesión) — verificación funcional/de archivos, no visual. Ver
+      README.md sección "Verificación en Windows real" y bugs #6/#7.
 
 ## 2. Cobertura de casos DSP/motor de audio
 

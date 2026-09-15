@@ -1,6 +1,7 @@
 using AudioEvolution.Data;
 using AudioEvolution.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace AudioEvolution.App;
@@ -10,7 +11,13 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-        builder.UseMauiApp<App>();
+        builder
+            .UseMauiApp<App>()
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+            });
 
         string dbPath = Path.Combine(FileSystem.AppDataDirectory, "audioevolution.db");
         builder.Services.AddDbContext<ProjectDbContext>(options =>
@@ -23,14 +30,6 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
-        var app = builder.Build();
-
-        using (var scope = app.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<ProjectDbContext>();
-            db.Database.EnsureCreated();
-        }
-
-        return app;
+        return builder.Build();
     }
 }

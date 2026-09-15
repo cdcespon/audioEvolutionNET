@@ -5,8 +5,21 @@
       Windows-only on purpose: the product target is a Windows DAW, not a cross-platform
       MAUI app, and MAUI's Windows head (WinUI3) can only be built/run on Windows itself —
       this project cannot be restored or built in this repo's Linux dev container.
+
+      net10.0-windows, no net8.0-windows: el workload maui-windows instalado en esta
+      máquina es de la banda 10.0.100. La causa real del crash original (ver bug #6 en
+      README.md, orden de construcción App/MainPage) era independiente de la versión de
+      MAUI/TFM — probado: con esa causa corregida, net8.0-windows + Microsoft.Maui.Controls
+      8.0.100 también compila y el proceso queda vivo, pero la ventana nunca llega a
+      mostrar contenido real (la base SQLite nunca se crea, seña de que algo más no
+      verificado falla en esa combinación puntual en esta máquina). net10.0-windows +
+      Microsoft.Maui.Controls 10.0.1 (la versión que trae el workload instalado acá) sí
+      quedó verificado de punta a punta (ventana + flujo real de creación de proyecto +
+      persistencia SQLite confirmada). Se prioriza la combinación verificada. AudioEvolution.Core/Data
+      se quedan en net8.0 (multiplataforma, verificados en Linux); solo el head
+      Windows-only sube de banda.
     -->
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <OutputType>Exe</OutputType>
     <RootNamespace>AudioEvolution.App</RootNamespace>
@@ -21,6 +34,13 @@
     <ApplicationVersion>1</ApplicationVersion>
 
     <WindowsPackageType>None</WindowsPackageType>
+    <!--
+      Head desempaquetado (sin MSIX) — comportamiento por defecto de la plantilla oficial
+      `dotnet new maui` también. RuntimeIdentifier evita el warning NETSDK1206 sobre
+      assets nativos de Microsoft.WindowsAppSDK específicos de RID, sin forzar
+      self-contained.
+    -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,8 +50,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>

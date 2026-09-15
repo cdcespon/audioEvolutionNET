@@ -46,6 +46,6 @@ public partial class MainPage : ContentPage
 
         // Multitrack editor (Task #6) is not built yet — this is the wiring point where it
         // will be pushed once it exists.
-        await DisplayAlert("Proyecto", $"Abrir '{item.Name}' — editor multipista pendiente.", "OK");
+        await DisplayAlertAsync("Proyecto", $"Abrir '{item.Name}' — editor multipista pendiente.", "OK");
     }
 }

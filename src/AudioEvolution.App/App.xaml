@@ -4,10 +4,10 @@
              x:Class="AudioEvolution.App.App">
     <Application.Resources>
         <ResourceDictionary>
-            <Color x:Key="AppBackground">#1b1b1f</Color>
-            <Color x:Key="AppSurface">#252529</Color>
-            <Color x:Key="AppAccent">#4fd1c5</Color>
-            <Color x:Key="AppText">#f2f2f4</Color>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
