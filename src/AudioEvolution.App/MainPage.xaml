@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="AudioEvolution.App.MainPage"
+             Title="Audio Evolution"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <Grid Padding="24" RowDefinitions="Auto,Auto,*" RowSpacing="16">
+
+        <Label Grid.Row="0"
+               Text="Proyectos"
+               FontSize="28"
+               FontAttributes="Bold"
+               TextColor="{StaticResource AppText}" />
+
+        <Button Grid.Row="1"
+                Text="+ Nuevo proyecto"
+                Clicked="OnNewProjectClicked"
+                BackgroundColor="{StaticResource AppAccent}"
+                TextColor="#0a0a0b"
+                HorizontalOptions="Start"
+                CornerRadius="6"
+                Padding="16,10" />
+
+        <CollectionView Grid.Row="2"
+                         x:Name="ProjectsList"
+                         SelectionMode="Single"
+                         SelectionChanged="OnProjectSelected">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="12" ColumnDefinitions="*,Auto"
+                          BackgroundColor="{StaticResource AppSurface}">
+                        <Label Grid.Column="0"
+                               Text="{Binding Name}"
+                               TextColor="{StaticResource AppText}"
+                               FontSize="16"
+                               VerticalOptions="Center" />
+                        <Label Grid.Column="1"
+                               Text="{Binding ModifiedAt, StringFormat='{0:g}'}"
+                               TextColor="#9a9aa0"
+                               FontSize="12"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>
