@@ -1,5 +1,6 @@
 using System.Buffers;
 using AudioEvolution.Core.Model;
+using AudioEvolution.Core.Time;
 
 namespace AudioEvolution.Core.Engine;
 
@@ -7,7 +8,9 @@ namespace AudioEvolution.Core.Engine;
 /// Renders a single track's clips into a stereo interleaved buffer for a given range of the
 /// master timeline. Overlapping clips on the same track sum together (matches AEM behavior on
 /// lanes that permit overlap); each clip contributes its own gain/fade envelope via
-/// AudioClip.GainAt before track volume/pan is applied by the caller (MixEngine).
+/// AudioClip.GainAt, and track volume/pan (static or automated) is applied here — this is the
+/// only place with per-sample resolution, so automation has to be resolved at this level rather
+/// than as a flat per-block multiply in MixEngine.
 /// </summary>
 public sealed class TrackRenderer
 {
@@ -20,9 +23,10 @@ public sealed class TrackRenderer
 
     /// <summary>
     /// Renders [startFrame, startFrame+frameCount) of the track's timeline into
-    /// destination (interleaved stereo: length == frameCount * 2), summing overlapping clips.
+    /// destination (interleaved stereo: length == frameCount * 2), summing overlapping clips
+    /// and applying the track's volume/pan — sample-accurately if either is automated.
     /// </summary>
-    public void Render(Track track, long startFrame, int frameCount, Span<float> destination)
+    public void Render(Track track, long startFrame, int frameCount, int sampleRate, Span<float> destination)
     {
         destination.Clear();
         if (track.Muted) return;
@@ -71,11 +75,45 @@ public sealed class TrackRenderer
             }
         }
 
-        var (left, right) = track.PanGains();
+        var volumeLane = FindLane(track, AutomationTarget.Volume);
+        var panLane = FindLane(track, AutomationTarget.Pan);
+
+        if (volumeLane is null && panLane is null)
+        {
+            // Fast path: static gain, computed once instead of per sample.
+            float volume = track.VolumeLinear;
+            var (left, right) = track.PanGains();
+            for (int i = 0; i < frameCount; i++)
+            {
+                destination[i * 2] += monoBuf[i] * volume * left;
+                destination[i * 2 + 1] += monoBuf[i] * volume * right;
+            }
+            return;
+        }
+
         for (int i = 0; i < frameCount; i++)
         {
-            destination[i * 2] += monoBuf[i] * left;
-            destination[i * 2 + 1] += monoBuf[i] * right;
+            var sampleTime = new SampleTime(startFrame + i, sampleRate);
+            float volumeDb = volumeLane?.ValueAt(sampleTime, track.VolumeDb) ?? track.VolumeDb;
+            float pan = panLane?.ValueAt(sampleTime, track.Pan) ?? track.Pan;
+
+            float volume = (float)Math.Pow(10, volumeDb / 20.0);
+            double angle = (Math.Clamp(pan, -1f, 1f) + 1.0) * Math.PI / 4.0;
+            float left = (float)Math.Cos(angle);
+            float right = (float)Math.Sin(angle);
+
+            destination[i * 2] += monoBuf[i] * volume * left;
+            destination[i * 2 + 1] += monoBuf[i] * volume * right;
         }
+    }
+
+    private static AutomationLane? FindLane(Track track, AutomationTarget target)
+    {
+        foreach (var lane in track.AutomationLanes)
+        {
+            if (lane.Target == target && lane.Enabled && lane.Points.Count > 0)
+                return lane;
+        }
+        return null;
     }
 }

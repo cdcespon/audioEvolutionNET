@@ -16,8 +16,9 @@ AudioEvolution.sln
 - **AudioEvolution.Core** no depende de MAUI, EF Core ni de ningún backend de audio real —
   es puro C#, testeable en cualquier plataforma. Contiene el modelo de dominio (`Project`,
   `Track`, `AudioClip`, `AutomationLane`), el motor de mezcla (`MixEngine`/`TrackRenderer`,
-  suma multipista con solo/mute/pan/fades), el códec WAV (16/24/32-bit PCM + float32) y las
-  interfaces del backend de audio real (`IAudioDevice`, sin implementación aún).
+  suma multipista con solo/mute/pan/fades/automatización de volumen y pan aplicada
+  sample-accurately), el códec WAV (16/24/32-bit PCM + float32) y las interfaces del
+  backend de audio real (`IAudioDevice`, sin implementación aún).
 - **AudioEvolution.Data** persiste `Project` en SQLite vía EF Core. Las pistas/clips se
   guardan como JSON dentro de la fila del proyecto (no normalizado en tablas relacionales
   todavía — no hace falta hasta que se necesite consultar across-project, p.ej. "todos los

@@ -33,11 +33,12 @@ public sealed class MixEngine
             if (anySoloed && !track.Soloed) continue;
 
             trackBuf.Clear();
-            _renderer.Render(track, startFrame, frameCount, trackBuf);
+            // TrackRenderer already applies the track's volume/pan (static or automated,
+            // sample-accurately) — do not re-apply volume here or it gets applied twice.
+            _renderer.Render(track, startFrame, frameCount, project.SampleRate, trackBuf);
 
-            float volume = track.VolumeLinear;
             for (int i = 0; i < trackBuf.Length; i++)
-                destination[i] += trackBuf[i] * volume;
+                destination[i] += trackBuf[i];
         }
     }
 }

@@ -50,8 +50,9 @@ Marcar solo lo que tiene implementación real y testeada — no "diseñado" ni "
 
 - [ ] Grabación multipista
 - [ ] Edición no destructiva (trim, split, move, fade) — modelo listo, falta UI
-- [ ] Automatización de volumen/pan — modelo listo (`AutomationLane`), falta aplicarla en
-      el motor de mezcla (hoy `MixEngine` no consulta las lanes de automatización)
+- [x] Automatización de volumen/pan — `TrackRenderer` la evalúa sample-accurately
+      (`TrackRenderer_VolumeAutomation_OverridesStaticVolumePerSample`). Falta UI para
+      dibujar/editar las curvas.
 - [ ] MIDI + piano roll
 - [ ] Instrumentos virtuales / síntesis
 - [ ] Cadena de efectos con DSP real (no solo el slot `EffectInstance`)

@@ -40,7 +40,7 @@ public class MixEngineTests
 
         var renderer = new TrackRenderer(ResolverFor(sources, rate));
         Span<float> dest = new float[10 * 2];
-        renderer.Render(track, 0, 10, dest);
+        renderer.Render(track, 0, 10, rate, dest);
 
         // Pan center => equal power ~0.707 each channel; combined mono = 0.5
         float expectedMono = 0.5f;
@@ -61,7 +61,7 @@ public class MixEngineTests
 
         var renderer = new TrackRenderer(ResolverFor(sources, rate));
         Span<float> dest = new float[10 * 2];
-        renderer.Render(track, 0, 10, dest);
+        renderer.Render(track, 0, 10, rate, dest);
 
         foreach (var sample in dest)
             Assert.Equal(0f, sample);
@@ -97,6 +97,34 @@ public class MixEngineTests
         Assert.True(dest[0] > 0f);
         float onlyA = MathF.Cos(MathF.PI / 4); // pan-center gain for a single 1.0 mono source
         Assert.Equal(onlyA, dest[0], precision: 4);
+    }
+
+    [Fact]
+    public void TrackRenderer_VolumeAutomation_OverridesStaticVolumePerSample()
+    {
+        const int rate = 48000;
+        var sources = new Dictionary<string, float[]> { ["a"] = new float[10] };
+        Array.Fill(sources["a"], 1.0f);
+
+        // Static volume is silent (-96dB); automation ramps 0dB -> -96dB linearly across the buffer.
+        // If automation weren't applied, every sample would be near-silent instead of following the ramp.
+        var track = new Track { Name = "t1", Type = TrackType.Audio, VolumeDb = -96f };
+        track.Clips.Add(MakeClip("a", 0, rate, sources["a"]));
+
+        var lane = new AutomationLane { Target = AutomationTarget.Volume };
+        lane.AddPoint(new AutomationPoint(new SampleTime(0, rate), 0f));
+        lane.AddPoint(new AutomationPoint(new SampleTime(9, rate), -96f));
+        track.AutomationLanes.Add(lane);
+
+        var renderer = new TrackRenderer(ResolverFor(sources, rate));
+        Span<float> dest = new float[10 * 2];
+        renderer.Render(track, 0, 10, rate, dest);
+
+        // Sample 0 should be at full (0dB) volume, sample 9 near-silent -> first sample much louder than last.
+        float firstSampleLevel = MathF.Abs(dest[0]);
+        float lastSampleLevel = MathF.Abs(dest[18]);
+        Assert.True(firstSampleLevel > 0.5f, $"expected loud first sample, got {firstSampleLevel}");
+        Assert.True(lastSampleLevel < 0.01f, $"expected near-silent last sample, got {lastSampleLevel}");
     }
 
     [Fact]
